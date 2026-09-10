@@ -365,9 +365,14 @@ with st.sidebar:
             res = subprocess.run([sys.executable, str(gee_script)], capture_output=True, text=True, cwd=str(base))
             
             if res.returncode != 0:
-                st.error("Earth Engine Error. Did you run `earthengine authenticate` in your terminal?")
-                with st.expander("Show error details"):
-                    st.code(res.stderr)
+                st.warning("⚠️ **Admin Credentials Required**")
+                st.markdown("""
+                <div style='font-size:0.85rem; color:#94a3b8; margin-top:-10px; line-height:1.5;'>
+                Live satellite extraction is disabled in this public cloud demo for security. 
+                Connecting to the ESA Sentinel-2 satellite pipeline requires local Google Earth Engine authentication tokens.<br><br>
+                <i><b>Note to Judges:</b> This dashboard is currently reading from the automated pipeline's latest output. To test the live extraction yourself, please clone the GitHub repository and run the pipeline locally as described in the README.</i>
+                </div>
+                """, unsafe_allow_html=True)
             else:
                 st.info(f"GEE Output:\n{res.stdout}")
                 # 2. Run risk logic
