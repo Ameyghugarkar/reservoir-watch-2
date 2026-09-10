@@ -1,0 +1,14 @@
+﻿.env
+*.env
+__pycache__/
+*.py[cod]
+*.pyd
+.venv/
+venv/
+.ipynb_checkpoints/
+*.ipynb
+.streamlit/secrets.toml
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
