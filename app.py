@@ -385,20 +385,32 @@ def chart_area_detail(rsk_df, name):
         hovertemplate='<b>Latest observation</b><br>%{x|%b %d, %Y}<br>%{y:.2f} sq km<extra></extra>',
     ))
 
-    # ── 30-Day Forecast ──────────────────────────────────────────────────────
-    window = df[df['date'] >= last_date - pd.Timedelta(days=28)]
+    # ── 60-Day Forecast ──────────────────────────────────────────────────────
+    # Use 14-day window: captures current post-monsoon trend more accurately
+    # than 28 days which still includes monsoon fill data from October
+    window = df[df['date'] >= last_date - pd.Timedelta(days=14)]
     if len(window) >= 3:
         x_num  = (window['date'] - window['date'].min()).dt.days.values.astype(float)
         y_vals = window['surface_area_sqkm'].values.astype(float)
         slope, intercept, _, _, stderr = _stats.linregress(x_num, y_vals)
 
-        # Build forecast dates: today → +30 days
+        # Seasonal correction: Oct–Jun is dry season — reservoirs don't fill
+        # without monsoon rain. If regression sees a positive slope (artifact
+        # of late-monsoon fill data still in window), force it to flat (0).
+        dry_months = list(range(1, 7)) + list(range(10, 13))  # Oct-Jun
+        if last_date.month in dry_months and slope > 0:
+            slope = 0.0   # plateau — no filling in dry season
+
+        # Build forecast dates: today → +60 days
         forecast_dates = pd.date_range(last_date, periods=61, freq='D')
         x_forecast     = np.array((forecast_dates - window['date'].min()).days, dtype=float)
         y_forecast     = np.array(slope * x_forecast + intercept)
+        # Cap forecast at current observed area (can't go higher in dry season)
+        if last_date.month in dry_months:
+            y_forecast = np.minimum(y_forecast, last_area)
         # 95% confidence band: ±1.96 × stderr × sqrt(1 + 1/n)
         band    = 1.96 * stderr * (1 + 1 / len(window)) ** 0.5
-        y_upper = np.clip(y_forecast + band, 0, None)
+        y_upper = np.clip(y_forecast + band, 0, max_a)
         y_lower = np.clip(y_forecast - band, 0, None)
         y_mid   = np.clip(y_forecast, 0, None)
 
