@@ -198,6 +198,7 @@ def chart_combined(rsk_df):
 
 
 def chart_area_detail(rsk_df, name):
+    from scipy import stats as _stats
     df     = rsk_df[rsk_df['reservoir_name'] == name].sort_values('date')
     color  = RES_COLORS.get(name, '#38bdf8')
     max_a  = MAX_AREAS.get(name, df['surface_area_sqkm'].max())
@@ -206,12 +207,12 @@ def chart_area_detail(rsk_df, name):
 
     fig = go.Figure()
     fig = monsoon_bands(fig, years)
-    fig.add_hline(y=max_a,        line_dash="dot", line_color="#334155",
-                  annotation_text=f"Max {max_a} sq km",
-                  annotation_font=dict(color="#475569", size=10))
-    fig.add_hline(y=max_a * 0.20, line_dash="dot", line_color="#ef4444",
-                  annotation_text="Critical threshold (20%)",
-                  annotation_font=dict(color="#ef4444", size=10))
+    fig.add_hline(y=max_a,        line_dash='dot', line_color='#334155',
+                  annotation_text=f'Max {max_a} sq km',
+                  annotation_font=dict(color='#475569', size=10))
+    fig.add_hline(y=max_a * 0.20, line_dash='dot', line_color='#ef4444',
+                  annotation_text='Critical threshold (20%)',
+                  annotation_font=dict(color='#ef4444', size=10))
 
     if 'risk_level' in df.columns:
         for risk, rc in RISK_COLORS.items():
@@ -220,24 +221,66 @@ def chart_area_detail(rsk_df, name):
                 fig.add_trace(go.Scatter(
                     x=sub['date'], y=sub['surface_area_sqkm'],
                     mode='markers', name=risk, marker=dict(color=rc, size=7),
-                    hovertemplate=f"<b>{risk}</b><br>%{{x|%b %d}}<br>%{{y:.2f}} sq km<extra></extra>",
+                    hovertemplate=f'<b>{risk}</b><br>%{{x|%b %d}}<br>%{{y:.2f}} sq km<extra></extra>',
                 ))
 
     fig.add_trace(go.Scatter(
-        x=df['date'], y=df['surface_area_sqkm'], name='Area',
+        x=df['date'], y=df['surface_area_sqkm'], name='Observed Area',
         line=dict(color=color, width=2.2),
         fill='tozeroy', fillcolor=f'rgba({rgb[0]},{rgb[1]},{rgb[2]},0.08)',
-        hovertemplate="Area: %{y:.2f} sq km<br>%{x|%b %d, %Y}<extra></extra>",
+        hovertemplate='Area: %{y:.2f} sq km<br>%{x|%b %d, %Y}<extra></extra>',
     ))
     # Latest star
+    last_date = df['date'].iloc[-1]
+    last_area = df['surface_area_sqkm'].iloc[-1]
     fig.add_trace(go.Scatter(
-        x=[df['date'].iloc[-1]], y=[df['surface_area_sqkm'].iloc[-1]],
+        x=[last_date], y=[last_area],
         mode='markers', showlegend=False,
         marker=dict(symbol='star', color=color, size=16, line=dict(color='white', width=1)),
-        hovertemplate="<b>Latest observation</b><br>%{x|%b %d, %Y}<br>%{y:.2f} sq km<extra></extra>",
+        hovertemplate='<b>Latest observation</b><br>%{x|%b %d, %Y}<br>%{y:.2f} sq km<extra></extra>',
     ))
 
-    _dark(fig, height=380, ytitle="Surface Area (sq km)",
+    # ── 30-Day Forecast ──────────────────────────────────────────────────────
+    window = df[df['date'] >= last_date - pd.Timedelta(days=28)]
+    if len(window) >= 3:
+        x_num  = (window['date'] - window['date'].min()).dt.days.values.astype(float)
+        y_vals = window['surface_area_sqkm'].values.astype(float)
+        slope, intercept, _, _, stderr = _stats.linregress(x_num, y_vals)
+
+        # Build forecast dates: today → +30 days
+        forecast_dates = pd.date_range(last_date, periods=31, freq='D')
+        x_forecast     = (forecast_dates - window['date'].min()).days.astype(float)
+        y_forecast     = slope * x_forecast + intercept
+        # 95% confidence band: ±1.96 × stderr × sqrt(1 + 1/n)
+        band = 1.96 * stderr * (1 + 1 / len(window)) ** 0.5
+
+        # Confidence band
+        fig.add_trace(go.Scatter(
+            x=list(forecast_dates) + list(forecast_dates[::-1]),
+            y=list((y_forecast + band).clip(0)) + list((y_forecast - band).clip(0))[::-1],
+            fill='toself', fillcolor=f'rgba({rgb[0]},{rgb[1]},{rgb[2]},0.07)',
+            line=dict(width=0), showlegend=False, hoverinfo='skip', name='Forecast band',
+        ))
+        # Forecast centre line
+        fig.add_trace(go.Scatter(
+            x=forecast_dates, y=y_forecast.clip(0),
+            mode='lines', name='30-Day Forecast',
+            line=dict(color=color, width=2, dash='dot'),
+            hovertemplate='<b>Forecast</b><br>%{x|%b %d, %Y}<br>%{y:.2f} sq km<extra></extra>',
+        ))
+
+        # Mark where forecast crosses WATCH threshold (35% of max)
+        watch_lvl = max_a * 0.35
+        for j in range(len(y_forecast) - 1):
+            if y_forecast[j] > watch_lvl >= y_forecast[j + 1]:
+                cross_date = forecast_dates[j + 1]
+                fig.add_vline(x=cross_date, line_dash='dash', line_color='#f59e0b', line_width=1.5)
+                fig.add_annotation(x=cross_date, y=watch_lvl, text='⚠ WATCH',
+                                   font=dict(color='#f59e0b', size=11), showarrow=False,
+                                   xshift=40, yshift=10)
+                break
+
+    _dark(fig, height=400, ytitle='Surface Area (sq km)',
           legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
     return fig
 
@@ -554,6 +597,45 @@ if page == "🏠 Overview":
                 <span style='font-size:.68rem;color:#475569'>
                   Next pass: ~{f_next.strftime("%b %d")}
                 </span>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Population Impact Row ─────────────────────────────────────────────────
+    st.markdown('<div class="sec-hdr">🏙️ Population Impact — Pune City Water Supply (3.4M Residents)</div>',
+                unsafe_allow_html=True)
+    # Pune daily water demand ≈ 1,400 MLD. Each reservoir contributes proportionally.
+    PUNE_DAILY_MLD   = 1400          # Million Litres per Day
+    TOTAL_MAX_SQkm   = sum(MAX_AREAS.values())
+    pop_cols = st.columns(len(reservoirs))
+    for i, name in enumerate(reservoirs):
+        row   = latest(rsk_df, name)
+        if row is None: continue
+        max_a = MAX_AREAS.get(name, 1)
+        # Reservoir share of total supply capacity
+        share       = max_a / TOTAL_MAX_SQkm
+        daily_share = PUNE_DAILY_MLD * share          # MLD this reservoir handles
+        # Buffer volume (above 20% critical floor) in Million Litres
+        area        = row['surface_area_sqkm']
+        pct         = area / max_a
+        usable_pct  = max(pct - 0.20, 0)
+        # Approximate volume: surface_area × mean_depth(~8m) × usable fraction
+        # simplified: days = buffer_days from risk engine
+        days        = row['days_remaining_estimate']
+        days_lbl    = '999+' if days >= 999 else str(days)
+        rc          = RES_COLORS.get(name, '#38bdf8')
+        daily_lbl   = f'{daily_share:.0f}'
+        with pop_cols[i]:
+            st.markdown(f"""
+            <div style='background:#1e293b;border-radius:12px;padding:16px;text-align:center;border:1px solid #334155'>
+              <div style='font-size:.78rem;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px'>{name}</div>
+              <div style='font-size:1.9rem;font-weight:800;color:{rc}'>{days_lbl}</div>
+              <div style='font-size:.72rem;color:#94a3b8;margin-top:2px'>days of supply remaining</div>
+              <div style='margin-top:10px;padding-top:10px;border-top:1px solid #334155'>
+                <span style='font-size:.72rem;color:#475569'>Daily contribution: </span>
+                <span style='font-size:.78rem;color:#cbd5e1;font-weight:600'>{daily_lbl} MLD</span>
               </div>
             </div>
             """, unsafe_allow_html=True)
