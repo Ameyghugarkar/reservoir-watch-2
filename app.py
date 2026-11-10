@@ -390,37 +390,36 @@ def chart_area_detail(rsk_df, name):
     ))
 
     # ── 60-Day Forecast ──────────────────────────────────────────────────────
-    # Use last 4 satellite passes (not a date range) so we always have enough
-    # points and avoid gaps from cloudy weeks.
-    window = df.tail(4).copy()
+    # Use last 4 clean satellite passes for context, but compute slope from
+    # the last 2 observations only — this gives the actual CURRENT rate of
+    # change rather than a regression that averages in older filling data.
+    raw4 = df.tail(4).copy()
+    med  = raw4['surface_area_sqkm'].median()
+    raw4 = raw4[raw4['surface_area_sqkm'].between(med * 0.85, med * 1.15)]
 
-    # Remove intra-window outliers: drop any point >15% from window median
-    # (catches cloud-contaminated dips like Oct-20 at 5.77 vs median ~6.86)
-    med    = window['surface_area_sqkm'].median()
-    window = window[window['surface_area_sqkm'].between(med * 0.85, med * 1.15)]
+    if len(raw4) >= 2:
+        # 2-point slope: simple rate between last two clean observations
+        last2  = raw4.tail(2)
+        days_d = max((last2['date'].iloc[-1] - last2['date'].iloc[0]).days, 1)
+        slope  = (last2['surface_area_sqkm'].iloc[-1] -
+                  last2['surface_area_sqkm'].iloc[0]) / days_d
 
-    if len(window) >= 2:
-        x_num  = (window['date'] - window['date'].min()).dt.days.values.astype(float)
-        y_vals = window['surface_area_sqkm'].values.astype(float)
-        slope, intercept, _, _, stderr = _stats.linregress(x_num, y_vals)
+        # Confidence band from full 4-point window regression stderr
+        x_w = (raw4['date'] - raw4['date'].min()).dt.days.values.astype(float)
+        y_w = raw4['surface_area_sqkm'].values.astype(float)
+        _, _, _, _, stderr = _stats.linregress(x_w, y_w)
 
-        # Seasonal correction: Oct–Jun is dry season — reservoirs don't fill.
-        # If regression still shows positive slope, force flat (0).
+        # Seasonal ceiling: forecast can't go above current level in dry season
         dry_months = list(range(1, 7)) + list(range(10, 13))
-        if last_date.month in dry_months and slope > 0:
-            slope = 0.0
 
-        # Forecast from last_date forward 60 days
         forecast_dates = pd.date_range(last_date, periods=61, freq='D')
-        x_base    = float((last_date - window['date'].min()).days)
-        x_fcast   = np.arange(x_base, x_base + 61, dtype=float)
-        y_forecast = np.array(slope * x_fcast + intercept)
+        x_fcast    = np.arange(0, 61, dtype=float)
+        y_forecast = np.array(last_area + slope * x_fcast)
 
-        # Hard ceiling: can't exceed current level in dry season
         if last_date.month in dry_months:
             y_forecast = np.minimum(y_forecast, last_area)
 
-        band    = max(1.96 * stderr * (1 + 1 / len(window)) ** 0.5, 0.05)
+        band    = max(1.96 * stderr * (1 + 1 / len(raw4)) ** 0.5, 0.05)
         y_upper = np.clip(y_forecast + band, 0, max_a)
         y_lower = np.clip(y_forecast - band, 0, None)
         y_mid   = np.clip(y_forecast, 0, None)
