@@ -390,30 +390,37 @@ def chart_area_detail(rsk_df, name):
     ))
 
     # ── 60-Day Forecast ──────────────────────────────────────────────────────
-    # 21-day window: Sentinel-2 passes every ~5 days so 14 days only gives
-    # 2 observations (fails the >=3 check). 21 days gives 4 clean points.
-    window = df[df['date'] >= last_date - pd.Timedelta(days=21)]
+    # Use last 4 satellite passes (not a date range) so we always have enough
+    # points and avoid gaps from cloudy weeks.
+    window = df.tail(4).copy()
+
+    # Remove intra-window outliers: drop any point >15% from window median
+    # (catches cloud-contaminated dips like Oct-20 at 5.77 vs median ~6.86)
+    med    = window['surface_area_sqkm'].median()
+    window = window[window['surface_area_sqkm'].between(med * 0.85, med * 1.15)]
+
     if len(window) >= 2:
         x_num  = (window['date'] - window['date'].min()).dt.days.values.astype(float)
         y_vals = window['surface_area_sqkm'].values.astype(float)
         slope, intercept, _, _, stderr = _stats.linregress(x_num, y_vals)
 
-        # Seasonal correction: Oct–Jun is dry season — reservoirs don't fill
-        # without monsoon rain. If regression sees a positive slope (artifact
-        # of late-monsoon fill data still in window), force it to flat (0).
-        dry_months = list(range(1, 7)) + list(range(10, 13))  # Oct-Jun
+        # Seasonal correction: Oct–Jun is dry season — reservoirs don't fill.
+        # If regression still shows positive slope, force flat (0).
+        dry_months = list(range(1, 7)) + list(range(10, 13))
         if last_date.month in dry_months and slope > 0:
-            slope = 0.0   # plateau — no filling in dry season
+            slope = 0.0
 
-        # Build forecast dates: today → +60 days
+        # Forecast from last_date forward 60 days
         forecast_dates = pd.date_range(last_date, periods=61, freq='D')
-        x_forecast     = np.array((forecast_dates - window['date'].min()).days, dtype=float)
-        y_forecast     = np.array(slope * x_forecast + intercept)
-        # Cap forecast at current observed area (can't go higher in dry season)
+        x_base    = float((last_date - window['date'].min()).days)
+        x_fcast   = np.arange(x_base, x_base + 61, dtype=float)
+        y_forecast = np.array(slope * x_fcast + intercept)
+
+        # Hard ceiling: can't exceed current level in dry season
         if last_date.month in dry_months:
             y_forecast = np.minimum(y_forecast, last_area)
-        # 95% confidence band: ±1.96 × stderr × sqrt(1 + 1/n)
-        band    = 1.96 * stderr * (1 + 1 / len(window)) ** 0.5
+
+        band    = max(1.96 * stderr * (1 + 1 / len(window)) ** 0.5, 0.05)
         y_upper = np.clip(y_forecast + band, 0, max_a)
         y_lower = np.clip(y_forecast - band, 0, None)
         y_mid   = np.clip(y_forecast, 0, None)
