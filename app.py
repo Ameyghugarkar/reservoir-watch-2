@@ -249,25 +249,29 @@ def chart_area_detail(rsk_df, name):
 
         # Build forecast dates: today → +30 days
         forecast_dates = pd.date_range(last_date, periods=31, freq='D')
-        x_forecast     = (forecast_dates - window['date'].min()).days.astype(float)
-        y_forecast     = slope * x_forecast + intercept
+        x_forecast     = np.array((forecast_dates - window['date'].min()).days, dtype=float)
+        y_forecast     = np.array(slope * x_forecast + intercept)
         # 95% confidence band: ±1.96 × stderr × sqrt(1 + 1/n)
-        band = 1.96 * stderr * (1 + 1 / len(window)) ** 0.5
+        band    = 1.96 * stderr * (1 + 1 / len(window)) ** 0.5
+        y_upper = np.clip(y_forecast + band, 0, None)
+        y_lower = np.clip(y_forecast - band, 0, None)
+        y_mid   = np.clip(y_forecast, 0, None)
 
         # Confidence band
         fig.add_trace(go.Scatter(
             x=list(forecast_dates) + list(forecast_dates[::-1]),
-            y=list((y_forecast + band).clip(0)) + list((y_forecast - band).clip(0))[::-1],
+            y=list(y_upper) + list(y_lower[::-1]),
             fill='toself', fillcolor=f'rgba({rgb[0]},{rgb[1]},{rgb[2]},0.07)',
-            line=dict(width=0), showlegend=False, hoverinfo='skip', name='Forecast band',
+            line=dict(width=0), showlegend=False, hoverinfo='skip',
         ))
         # Forecast centre line
         fig.add_trace(go.Scatter(
-            x=forecast_dates, y=y_forecast.clip(0),
+            x=forecast_dates, y=y_mid,
             mode='lines', name='30-Day Forecast',
             line=dict(color=color, width=2, dash='dot'),
             hovertemplate='<b>Forecast</b><br>%{x|%b %d, %Y}<br>%{y:.2f} sq km<extra></extra>',
         ))
+
 
         # Mark where forecast crosses WATCH threshold (35% of max)
         watch_lvl = max_a * 0.35
