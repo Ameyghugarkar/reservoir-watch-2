@@ -440,36 +440,16 @@ with st.sidebar:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Refresh Button ────────────────────────────────────────────────────────
-    st.markdown("<div style='font-size:.8rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.06em'>🔄 Live Update</div>", unsafe_allow_html=True)
-    st.markdown("<div style='font-size:.72rem;color:#475569;margin-bottom:8px'>Connect to Earth Engine to fetch the latest Sentinel-2 passes automatically.</div>", unsafe_allow_html=True)
-
-    if st.button("🛰️ Fetch Latest Satellite Data", use_container_width=True, type="primary"):
-        with st.spinner("Connecting to Google Earth Engine..."):
-            # 1. Run the GEE extraction script
-            base = Path(__file__).parent
-            gee_script = base / 'scripts' / 'update_gee.py'
-            res = subprocess.run([sys.executable, str(gee_script)], capture_output=True, text=True, cwd=str(base))
-            
-            if res.returncode != 0:
-                st.warning("⚠️ **Admin Credentials Required**")
-                st.markdown("""
-                <div style='font-size:0.85rem; color:#94a3b8; margin-top:-10px; line-height:1.5;'>
-                Live satellite extraction is disabled in this public cloud demo for security. 
-                Connecting to the ESA Sentinel-2 satellite pipeline requires local Google Earth Engine authentication tokens.<br><br>
-                <i><b>Note to Judges:</b> This dashboard is currently reading from the automated pipeline's latest output. To test the live extraction yourself, please clone the GitHub repository and run the pipeline locally as described in the README.</i>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.info(f"GEE Output:\n{res.stdout}")
-                # 2. Run risk logic
-                with st.spinner("Computing new risk levels..."):
-                    ok, out, err = refresh_risk_analysis()
-                if ok:
-                    st.success("Dashboard updated successfully!")
-                    st.rerun()
-                else:
-                    st.error(f"Risk compute error: {err[:300]}")
+    # ── Auto-Update Info ──────────────────────────────────────────────────────
+    st.markdown("""
+    <div style='background:#0f172a;border-radius:8px;padding:10px 12px;border:1px solid #1e293b'>
+      <div style='font-size:.75rem;font-weight:600;color:#22c55e;margin-bottom:4px'>⚡ Fully Automated</div>
+      <div style='font-size:.7rem;color:#475569;line-height:1.6'>
+        Satellite data updates automatically every <b style='color:#94a3b8'>5 days</b> via GitHub Actions
+        + ESA Sentinel-2. No manual action needed.
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.divider()
     st.markdown("""
