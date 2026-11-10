@@ -1,19 +1,39 @@
-﻿"""
+"""
 update_gee.py
 Automatically fetches new Sentinel-2 data from Earth Engine and appends it to reservoir_data.csv
+Supports both local OAuth credentials and GitHub Actions service account.
 """
 import ee
 import pandas as pd
-import os
+import json
+import argparse
 from datetime import datetime, date, timedelta
 from pathlib import Path
 
-# CRITICAL FIX: Initialize Earth Engine BEFORE defining any geometries!
+# Parse optional --service-account argument (used by GitHub Actions)
+parser = argparse.ArgumentParser()
+parser.add_argument('--service-account', type=str, default=None,
+                    help='Path to GEE service account JSON key file')
+args = parser.parse_args()
+
+# Initialize Earth Engine BEFORE defining any geometries!
 print("Connecting to Google Earth Engine...")
 try:
-    ee.Initialize(project='big-elysium-428716-s2')
+    if args.service_account:
+        # GitHub Actions path: use service account JSON
+        key = json.load(open(args.service_account))
+        credentials = ee.ServiceAccountCredentials(
+            email=key['client_email'], key_file=args.service_account
+        )
+        ee.Initialize(credentials, project='big-elysium-428716-s2')
+        print("Authenticated via Service Account.")
+    else:
+        # Local path: use saved OAuth token
+        ee.Initialize(project='big-elysium-428716-s2')
+        print("Authenticated via local OAuth token.")
 except Exception as e:
-    print("Earth Engine not authenticated. Please run 'python -c \"import ee; ee.Authenticate()\"' in your terminal.")
+    print(f"Earth Engine authentication failed: {e}")
+    print("Locally: run 'python -c \"import ee; ee.Authenticate()\"'")
     exit(1)
 
 # Paths

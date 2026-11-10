@@ -1,0 +1,69 @@
+name: ReservoirWatch Auto-Update
+
+on:
+  schedule:
+    # Runs every 5 days at 2:00 AM UTC (7:30 AM IST)
+    - cron: '0 2 */5 * *'
+  workflow_dispatch:  # Also allows manual trigger from GitHub website
+
+jobs:
+  update-satellite-data:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # 3. Install dependencies
+      - name: Install Dependencies
+        run: pip install earthengine-api pandas numpy scipy
+
+      # 4. Authenticate with Google Earth Engine using Service Account
+      - name: Authenticate with Earth Engine
+        env:
+          GEE_SERVICE_ACCOUNT_KEY: ${{ secrets.GEE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          echo "$GEE_SERVICE_ACCOUNT_KEY" > /tmp/gee_key.json
+          python -c "
+          import ee, json
+          credentials = ee.ServiceAccountCredentials(
+              email=json.load(open('/tmp/gee_key.json'))['client_email'],
+              key_file='/tmp/gee_key.json'
+          )
+          ee.Initialize(credentials, project='big-elysium-428716-s2')
+          print('Earth Engine authenticated successfully!')
+          "
+
+      # 5. Run the GEE pipeline
+      - name: Fetch Latest Satellite Data
+        env:
+          GEE_SERVICE_ACCOUNT_KEY: ${{ secrets.GEE_SERVICE_ACCOUNT_KEY }}
+        run: |
+          python -c "
+          import ee, json
+          credentials = ee.ServiceAccountCredentials(
+              email=json.load(open('/tmp/gee_key.json'))['client_email'],
+              key_file='/tmp/gee_key.json'
+          )
+          ee.Initialize(credentials, project='big-elysium-428716-s2')
+          " && python scripts/update_gee.py --service-account /tmp/gee_key.json
+
+      # 6. Run risk analysis
+      - name: Compute Risk Analysis
+        run: python risk_logic.py
+
+      # 7. Commit and push updated CSV back to GitHub
+      - name: Push Updated Data to GitHub
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name  "ReservoirWatch Bot"
+          git add data/reservoir_data.csv data/risk_analysis.csv
+          git diff --staged --quiet || git commit -m "Auto-update: satellite data $(date +'%Y-%m-%d')"
+          git push
