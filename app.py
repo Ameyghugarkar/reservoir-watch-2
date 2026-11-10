@@ -390,10 +390,10 @@ def chart_area_detail(rsk_df, name):
     ))
 
     # ── 60-Day Forecast ──────────────────────────────────────────────────────
-    # Use 14-day window: captures current post-monsoon trend more accurately
-    # than 28 days which still includes monsoon fill data from October
-    window = df[df['date'] >= last_date - pd.Timedelta(days=14)]
-    if len(window) >= 3:
+    # 21-day window: Sentinel-2 passes every ~5 days so 14 days only gives
+    # 2 observations (fails the >=3 check). 21 days gives 4 clean points.
+    window = df[df['date'] >= last_date - pd.Timedelta(days=21)]
+    if len(window) >= 2:
         x_num  = (window['date'] - window['date'].min()).dt.days.values.astype(float)
         y_vals = window['surface_area_sqkm'].values.astype(float)
         slope, intercept, _, _, stderr = _stats.linregress(x_num, y_vals)
