@@ -208,12 +208,12 @@ def chart_reservoir_map(rsk_df):
     PUNE = (73.857, 18.520)
     fig  = go.Figure()
 
-    # Cascade flow lines
+    # Cascade flow lines (Scattermap = new API, replaces Scattermapbox)
     all_pts = {**COORDS, 'Pune': PUNE}
     for src, dst in [('Varasgaon','Panshet'),('Panshet','Temghar'),
                      ('Temghar','Khadakwasla'),('Khadakwasla','Pune')]:
         s, d = all_pts[src], all_pts[dst]
-        fig.add_trace(go.Scattermapbox(
+        fig.add_trace(go.Scattermap(
             lon=[s[0], d[0]], lat=[s[1], d[1]], mode='lines',
             line=dict(width=2, color='rgba(56,189,248,0.4)'),
             showlegend=False, hoverinfo='skip'))
@@ -228,7 +228,7 @@ def chart_reservoir_map(rsk_df):
         risk  = row['risk_level']
         color = RISK_COLORS.get(risk, '#38bdf8')
         size  = max(18, min(50, pct * 0.5))
-        fig.add_trace(go.Scattermapbox(
+        fig.add_trace(go.Scattermap(
             lon=[lon], lat=[lat], mode='markers+text',
             marker=dict(size=size, color=color, opacity=0.9),
             text=[name], textposition='top right',
@@ -238,7 +238,7 @@ def chart_reservoir_map(rsk_df):
                           f'Area: {area:.2f} sq km ({pct:.0f}%)<extra></extra>'))
 
     # Pune city marker
-    fig.add_trace(go.Scattermapbox(
+    fig.add_trace(go.Scattermap(
         lon=[PUNE[0]], lat=[PUNE[1]], mode='markers+text',
         marker=dict(size=14, color='#f1f5f9'),
         text=['Pune City'], textposition='top right',
@@ -247,14 +247,15 @@ def chart_reservoir_map(rsk_df):
         hovertemplate='<b>Pune City</b><br>Population served: 3.4M<extra></extra>'))
 
     fig.update_layout(
-        mapbox=dict(style='carto-darkmatter',
-                    center=dict(lon=73.63, lat=18.39), zoom=9.5),
+        map=dict(style='carto-darkmatter',
+                 center=dict(lon=73.63, lat=18.39), zoom=9.5),
         height=430, margin=dict(l=0, r=0, t=0, b=0),
         paper_bgcolor='rgba(0,0,0,0)',
         legend=dict(bgcolor='rgba(15,23,42,0.85)', bordercolor='#334155',
                     borderwidth=1, font=dict(color='#cbd5e1', size=11),
                     x=0.01, y=0.99))
     return fig
+
 
 
 def chart_combined(rsk_df):
