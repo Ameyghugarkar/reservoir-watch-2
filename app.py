@@ -275,7 +275,7 @@ def chart_area_detail(rsk_df, name):
         slope, intercept, _, _, stderr = _stats.linregress(x_num, y_vals)
 
         # Build forecast dates: today → +30 days
-        forecast_dates = pd.date_range(last_date, periods=31, freq='D')
+        forecast_dates = pd.date_range(last_date, periods=61, freq='D')
         x_forecast     = np.array((forecast_dates - window['date'].min()).days, dtype=float)
         y_forecast     = np.array(slope * x_forecast + intercept)
         # 95% confidence band: ±1.96 × stderr × sqrt(1 + 1/n)
