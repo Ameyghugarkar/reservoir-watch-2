@@ -26,13 +26,11 @@ st.set_page_config(
 # ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-  /* ── Hide Streamlit chrome ───────────────────────────────────── */
-  #MainMenu { visibility: hidden; }
-  header    { visibility: hidden; }
-  footer    { visibility: hidden; }
-  [data-testid="stDecoration"]     { display: none !important; }
-  .stDeployButton                  { display: none !important; }
-  [data-testid="stToolbar"]        { display: none !important; }
+  /* ── Hide ONLY the Streamlit Cloud red crown badge (bottom-right) ── */
+  [data-testid="stStatusWidget"]          { display: none !important; }
+  .stStatusWidget                         { display: none !important; }
+  .viewerBadge_container__r5tak          { display: none !important; }
+  .viewerBadge_link__qRIco               { display: none !important; }
 
   /* ── App background ──────────────────────────────────────────── */
   .stApp { background:#0f172a; }
