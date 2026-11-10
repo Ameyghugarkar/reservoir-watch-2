@@ -347,6 +347,10 @@ def chart_area_detail(rsk_df, name):
     df     = rsk_df[rsk_df['reservoir_name'] == name].sort_values('date')
     color  = RES_COLORS.get(name, '#38bdf8')
     max_a  = MAX_AREAS.get(name, df['surface_area_sqkm'].max())
+
+    # Filter physically impossible readings (>110% of max area = bad satellite data)
+    df     = df[df['surface_area_sqkm'] <= max_a * 1.10].copy()
+
     years  = df['date'].dt.year.unique()
     rgb    = tuple(int(color[i:i+2], 16) for i in (1,3,5))
 
@@ -424,8 +428,8 @@ def chart_area_detail(rsk_df, name):
         # Forecast centre line
         fig.add_trace(go.Scatter(
             x=forecast_dates, y=y_mid,
-            mode='lines', name='30-Day Forecast',
-            line=dict(color=color, width=2, dash='dot'),
+            mode='lines', name='60-Day Forecast',
+            line=dict(color=color, width=2.5, dash='dot'),
             hovertemplate='<b>Forecast</b><br>%{x|%b %d, %Y}<br>%{y:.2f} sq km<extra></extra>',
         ))
 
@@ -443,7 +447,12 @@ def chart_area_detail(rsk_df, name):
 
     _dark(fig, height=400, ytitle='Surface Area (sq km)',
           legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
+    # Extend x-axis to cover full forecast window so dotted line is visible
+    x_end = last_date + pd.Timedelta(days=61)
+    fig.update_xaxes(range=[str(df['date'].min().date()), str(x_end.date())])
+    fig.update_yaxes(range=[0, max_a * 1.15])
     return fig
+
 
 
 def chart_depletion(rsk_df, name):
