@@ -40,9 +40,37 @@ except Exception as e:
 BASE_DIR = Path(__file__).parent.parent
 CSV_PATH = BASE_DIR / 'data' / 'reservoir_data.csv'
 
-# Just Khadakwasla for now (we can add the others later)
+# All 4 Reservoirs with exact traced coordinates
+# Khadakwasla  — confirmed rectangle (visually verified)
+# Varasgaon    — irregular polygon (hand-traced by user)
+# Panshet      — irregular polygon (hand-traced by user)
+# Temghar      — rectangle (confirmed coordinates)
 RESERVOIRS = {
-    'Khadakwasla': ee.Geometry.Rectangle([73.71, 18.40, 73.79, 18.46]),
+
+    'Khadakwasla': ee.Geometry.Rectangle(
+        [73.71, 18.40, 73.79, 18.46]
+    ),
+
+    'Varasgaon': ee.Geometry.Polygon([[
+        [73.428841, 18.416427],
+        [73.628654, 18.418056],
+        [73.629341, 18.389714],
+        [73.427124, 18.332692],
+        [73.428841, 18.416427],   # last = first (closed polygon)
+    ]]),
+
+    'Panshet': ee.Geometry.Polygon([[
+        [73.624535, 18.388085],
+        [73.447037, 18.335951],
+        [73.465576, 18.292602],
+        [73.637924, 18.344750],
+        [73.624535, 18.388085],   # last = first (closed polygon)
+    ]]),
+
+    'Temghar': ee.Geometry.Rectangle(
+        [73.486862, 18.431085, 73.545742, 18.470817]
+    ),
+
 }
 
 def add_ndwi(image):

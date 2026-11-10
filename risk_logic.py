@@ -1,4 +1,4 @@
-﻿"""
+"""
 risk_logic.py  --  Risk Analysis Engine
 ReservoirWatch: Pune Reservoir Drought Early Warning System
 
@@ -34,6 +34,7 @@ RESERVOIR_MAX_AREAS = {
     'Khadakwasla': 7.5,
     'Panshet':     11.0,
     'Varasgaon':   9.0,
+    'Temghar':     3.0,   # smaller reservoir upstream
 }
 
 # Risk thresholds
