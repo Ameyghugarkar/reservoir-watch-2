@@ -198,7 +198,67 @@ def monsoon_bands(fig, years):
     return fig
 
 
+def chart_reservoir_map(rsk_df):
+    COORDS = {
+        'Khadakwasla': (73.750, 18.430),
+        'Varasgaon':   (73.528, 18.376),
+        'Panshet':     (73.541, 18.338),
+        'Temghar':     (73.516, 18.451),
+    }
+    PUNE = (73.857, 18.520)
+    fig  = go.Figure()
+
+    # Cascade flow lines
+    all_pts = {**COORDS, 'Pune': PUNE}
+    for src, dst in [('Varasgaon','Panshet'),('Panshet','Temghar'),
+                     ('Temghar','Khadakwasla'),('Khadakwasla','Pune')]:
+        s, d = all_pts[src], all_pts[dst]
+        fig.add_trace(go.Scattermapbox(
+            lon=[s[0], d[0]], lat=[s[1], d[1]], mode='lines',
+            line=dict(width=2, color='rgba(56,189,248,0.4)'),
+            showlegend=False, hoverinfo='skip'))
+
+    # Reservoir markers
+    for name, (lon, lat) in COORDS.items():
+        row   = latest(rsk_df, name)
+        if row is None: continue
+        max_a = MAX_AREAS.get(name, 1)
+        area  = row['surface_area_sqkm']
+        pct   = area / max_a * 100
+        risk  = row['risk_level']
+        color = RISK_COLORS.get(risk, '#38bdf8')
+        size  = max(18, min(50, pct * 0.5))
+        fig.add_trace(go.Scattermapbox(
+            lon=[lon], lat=[lat], mode='markers+text',
+            marker=dict(size=size, color=color, opacity=0.9),
+            text=[name], textposition='top right',
+            textfont=dict(color='#f1f5f9', size=12),
+            name=f'{name} ({risk})',
+            hovertemplate=f'<b>{name}</b><br>Risk: <b>{risk}</b><br>'
+                          f'Area: {area:.2f} sq km ({pct:.0f}%)<extra></extra>'))
+
+    # Pune city marker
+    fig.add_trace(go.Scattermapbox(
+        lon=[PUNE[0]], lat=[PUNE[1]], mode='markers+text',
+        marker=dict(size=14, color='#f1f5f9'),
+        text=['Pune City'], textposition='top right',
+        textfont=dict(color='#94a3b8', size=11),
+        showlegend=False,
+        hovertemplate='<b>Pune City</b><br>Population served: 3.4M<extra></extra>'))
+
+    fig.update_layout(
+        mapbox=dict(style='carto-darkmatter',
+                    center=dict(lon=73.63, lat=18.39), zoom=9.5),
+        height=430, margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor='rgba(0,0,0,0)',
+        legend=dict(bgcolor='rgba(15,23,42,0.85)', bordercolor='#334155',
+                    borderwidth=1, font=dict(color='#cbd5e1', size=11),
+                    x=0.01, y=0.99))
+    return fig
+
+
 def chart_combined(rsk_df):
+
     fig   = go.Figure()
     years = rsk_df['date'].dt.year.unique()
     fig   = monsoon_bands(fig, years)
@@ -716,14 +776,21 @@ if page == "🏠 Overview":
                 unsafe_allow_html=True)
     st.plotly_chart(chart_combined(rsk_df), use_container_width=True)
 
-    # ── Bottom row ────────────────────────────────────────────────────────────
-    c1, c2 = st.columns(2)
-    with c1:
+    # ── Map + Charts row ──────────────────────────────────────────────────────
+    mc1, mc2 = st.columns([3, 2])
+    with mc1:
+        st.markdown('<div class="sec-hdr">🗺️ Reservoir Locations — Mutha River Basin</div>',
+                    unsafe_allow_html=True)
+        st.markdown("""<div style='font-size:.7rem;color:#475569;margin-bottom:6px'>
+        Blue lines show cascade flow: Varasgaon → Panshet → Temghar → Khadakwasla → Pune.
+        Dot size = current fill level. Color = risk status.</div>""", unsafe_allow_html=True)
+        st.plotly_chart(chart_reservoir_map(rsk_df), use_container_width=True)
+    with mc2:
         st.markdown('<div class="sec-hdr">Days of Buffer Remaining</div>', unsafe_allow_html=True)
         ch = chart_days_remaining(rsk_df)
         if ch: st.plotly_chart(ch, use_container_width=True)
-    with c2:
-        st.markdown('<div class="sec-hdr">Risk Distribution — Last 90 Days</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sec-hdr">Risk Distribution — Last 90 Days</div>',
+                    unsafe_allow_html=True)
         st.plotly_chart(chart_risk_history(rsk_df), use_container_width=True)
 
 
