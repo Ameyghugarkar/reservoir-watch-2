@@ -26,10 +26,25 @@ st.set_page_config(
 # ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
+  /* ── Hide Streamlit chrome ───────────────────────────────────── */
+  #MainMenu { visibility: hidden; }
+  header    { visibility: hidden; }
+  footer    { visibility: hidden; }
+  [data-testid="stDecoration"]     { display: none !important; }
+  .stDeployButton                  { display: none !important; }
+  [data-testid="stToolbar"]        { display: none !important; }
+
+  /* ── App background ──────────────────────────────────────────── */
   .stApp { background:#0f172a; }
-  [data-testid="stSidebar"]{ background:#1e293b; border-right:1px solid #334155; }
+
+  /* ── Sidebar ─────────────────────────────────────────────────── */
+  [data-testid="stSidebar"] {
+    background: linear-gradient(180deg,#0a1628 0%,#1a2540 55%,#1e293b 100%);
+    border-right: 1px solid #1e3a5f;
+  }
   [data-testid="stSidebar"] * { color:#cbd5e1 !important; }
 
+  /* ── Risk badges ─────────────────────────────────────────────── */
   .badge-safe     { background:#22c55e; color:#fff; padding:3px 10px; border-radius:20px;
                     font-weight:700; font-size:.78rem; letter-spacing:.04em; display:inline-flex;
                     align-items:center; gap:5px; white-space:nowrap; flex-shrink:0; }
@@ -42,7 +57,8 @@ st.markdown("""
                     animation:pulse 1.5s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.65} }
 
-  .res-card  { background:#1e293b; border-radius:14px; padding:22px; margin:6px 0; border-top:4px solid; }
+  /* ── Cards / Alerts ──────────────────────────────────────────── */
+  .res-card      { background:#1e293b; border-radius:14px; padding:22px; margin:6px 0; border-top:4px solid; }
   .card-safe     { border-color:#22c55e; }
   .card-watch    { border-color:#f59e0b; }
   .card-critical { border-color:#ef4444; }
@@ -54,13 +70,11 @@ st.markdown("""
   .alert-live  { background:rgba(34,197,94,.10);  border:1px solid #22c55e;
                  border-radius:10px; padding:10px 16px; margin:6px 0; color:#bbf7d0; }
 
-  .freshness-dot-fresh  { width:8px;height:8px;border-radius:50%;background:#22c55e;
-                           display:inline-block;margin-right:6px; }
-  .freshness-dot-warn   { width:8px;height:8px;border-radius:50%;background:#f59e0b;
-                           display:inline-block;margin-right:6px; }
-  .freshness-dot-stale  { width:8px;height:8px;border-radius:50%;background:#ef4444;
-                           display:inline-block;margin-right:6px; }
+  .freshness-dot-fresh { width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:6px; }
+  .freshness-dot-warn  { width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;margin-right:6px; }
+  .freshness-dot-stale { width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;margin-right:6px; }
 
+  /* ── Section header ──────────────────────────────────────────── */
   .sec-hdr { font-size:.95rem;font-weight:600;color:#64748b;text-transform:uppercase;
              letter-spacing:.08em;margin-bottom:10px;padding-bottom:6px;
              border-bottom:1px solid #1e293b; }
@@ -68,7 +82,7 @@ st.markdown("""
   h1,h2,h3 { color:#f1f5f9 !important; }
   p,li { color:#cbd5e1; }
   [data-testid="metric-container"] { background:rgba(30,41,59,.7);border-radius:10px;padding:10px 14px; }
-  .footer { color:#334155;font-size:.78rem;text-align:center;padding-top:36px; }
+  .footer { color:#1e3a5f;font-size:.72rem;text-align:center;padding-top:36px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -574,66 +588,98 @@ def chart_risk_timeline(rsk_df, name):
 
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
+    # ── Logo ─────────────────────────────────────────────────────────────────
     st.markdown("""
-    <div style='text-align:center;padding:18px 0 10px'>
-      <div style='font-size:2.6rem'>💧</div>
-      <div style='font-size:1.3rem;font-weight:700;color:#f1f5f9'>ReservoirWatch</div>
-      <div style='font-size:.78rem;color:#475569;margin-top:3px'>Pune Drought Early Warning</div>
+    <div style='text-align:center;padding:30px 10px 18px'>
+      <div style='font-size:3rem;filter:drop-shadow(0 0 20px rgba(56,189,248,.7))'>💧</div>
+      <div style='font-size:1.22rem;font-weight:800;color:#f1f5f9;
+                  letter-spacing:.03em;margin-top:8px'>ReservoirWatch</div>
+      <div style='font-size:.68rem;color:#38bdf8;letter-spacing:.14em;
+                  text-transform:uppercase;margin-top:4px;opacity:.85'>
+        Pune · Drought Early Warning
+      </div>
     </div>
+    <div style='height:1px;background:linear-gradient(90deg,transparent,#1e3a5f,transparent);
+                margin-bottom:16px'></div>
     """, unsafe_allow_html=True)
-    st.divider()
 
     page = st.radio("", ["🏠 Overview","🔍 Reservoir Detail","🛰️ Methodology"],
                     label_visibility="collapsed")
-    st.divider()
+
+    st.markdown("""<div style='height:1px;background:linear-gradient(90deg,transparent,
+                #1e3a5f,transparent);margin:14px 0'></div>""", unsafe_allow_html=True)
 
     # ── Data Freshness Panel ──────────────────────────────────────────────────
-    st.markdown("<div style='font-size:.8rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.06em'>📡 Data Freshness</div>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style='font-size:.64rem;font-weight:700;color:#38bdf8;text-transform:uppercase;
+                letter-spacing:.14em;margin-bottom:10px;padding-left:2px'>
+      📡 Satellite Freshness
+    </div>""", unsafe_allow_html=True)
 
     res_df_sidebar, rsk_df_sidebar = load_data()
     fresh_info = data_freshness(rsk_df_sidebar)
+    RC = {'Khadakwasla':'#38bdf8','Panshet':'#a78bfa','Varasgaon':'#34d399','Temghar':'#fb923c'}
 
     for name, info in fresh_info.items():
         dot_class = f"freshness-dot-{info['status']}"
         days_lbl  = f"{info['days_ago']}d ago" if info['days_ago'] > 0 else "today"
         next_lbl  = info['next_pass'].strftime('%b %d')
-        color     = '#22c55e' if info['status']=='fresh' else '#f59e0b' if info['status']=='warn' else '#ef4444'
+        fc        = '#22c55e' if info['status']=='fresh' else '#f59e0b' if info['status']=='warn' else '#ef4444'
+        rc        = RC.get(name,'#38bdf8')
         st.markdown(f"""
-        <div style='margin:6px 0;padding:8px 10px;background:#0f172a;border-radius:8px'>
+        <div style='margin:5px 0;padding:9px 11px;background:rgba(10,22,40,.7);
+                    border-radius:9px;border-left:3px solid {rc}'>
           <div style='display:flex;justify-content:space-between;align-items:center'>
-            <span style='font-size:.78rem;color:#cbd5e1'><span class="{dot_class}"></span>{name}</span>
-            <span style='font-size:.72rem;color:{color}'>{days_lbl}</span>
+            <span style='font-size:.77rem;color:#e2e8f0;font-weight:600'>
+              <span class="{dot_class}"></span>{name}
+            </span>
+            <span style='font-size:.68rem;color:{fc};font-weight:700'>{days_lbl}</span>
           </div>
-          <div style='font-size:.68rem;color:#475569;margin-top:2px'>
-            Last: {info['last_obs'].strftime('%b %d, %Y')} &nbsp;|&nbsp; Next pass: ~{next_lbl}
+          <div style='font-size:.63rem;color:#334155;margin-top:3px'>
+            Next pass ~{next_lbl}
           </div>
-        </div>
-        """, unsafe_allow_html=True)
+        </div>""", unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("""<div style='height:1px;background:linear-gradient(90deg,transparent,
+                #1e3a5f,transparent);margin:14px 0'></div>""", unsafe_allow_html=True)
 
-    # ── Auto-Update Info ──────────────────────────────────────────────────────
+    # ── Automation status ─────────────────────────────────────────────────────
     st.markdown("""
-    <div style='background:#0f172a;border-radius:8px;padding:10px 12px;border:1px solid #1e293b'>
-      <div style='font-size:.75rem;font-weight:600;color:#22c55e;margin-bottom:4px'>⚡ Fully Automated</div>
-      <div style='font-size:.7rem;color:#475569;line-height:1.6'>
-        Satellite data updates automatically every <b style='color:#94a3b8'>5 days</b> via GitHub Actions
-        + ESA Sentinel-2. No manual action needed.
+    <div style='background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.18);
+                border-radius:10px;padding:11px 13px'>
+      <div style='font-size:.7rem;font-weight:700;color:#22c55e;margin-bottom:5px'>
+        ⚡ Fully Automated Pipeline
+      </div>
+      <div style='font-size:.65rem;color:#475569;line-height:1.65'>
+        ESA Sentinel-2 → GEE → GitHub Actions<br>
+        Updates every <b style='color:#94a3b8'>5 days</b> · Zero manual steps
       </div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.divider()
+    st.markdown("""<div style='height:1px;background:linear-gradient(90deg,transparent,
+                #1e3a5f,transparent);margin:14px 0'></div>""", unsafe_allow_html=True)
+
+    # ── Tech stack badges ─────────────────────────────────────────────────────
     st.markdown("""
-    <div style='font-size:.73rem;color:#475569;line-height:1.7'>
-    <b style='color:#64748b'>DATA SOURCE</b><br>
-    ESA Sentinel-2 via Google Earth Engine<br>
-    NDWI · 10 m resolution · 5-day revisit<br><br>
-    <b style='color:#64748b'>RESERVOIRS</b><br>
-    Khadakwasla · Panshet · Varasgaon · Temghar<br>
-    Mutha River Basin, Pune<br><br>
-    <b style='color:#64748b'>ALIGNED WITH</b><br>
-    UN SDG 13 — Climate Action
+    <div style='font-size:.62rem;font-weight:700;color:#334155;text-transform:uppercase;
+                letter-spacing:.12em;margin-bottom:8px'>Stack</div>
+    <div style='display:flex;flex-wrap:wrap;gap:5px'>
+      <span style='background:rgba(56,189,248,.1);color:#38bdf8;border:1px solid rgba(56,189,248,.2);
+                   border-radius:6px;padding:3px 8px;font-size:.62rem;font-weight:600'>Sentinel-2</span>
+      <span style='background:rgba(167,139,250,.1);color:#a78bfa;border:1px solid rgba(167,139,250,.2);
+                   border-radius:6px;padding:3px 8px;font-size:.62rem;font-weight:600'>GEE</span>
+      <span style='background:rgba(52,211,153,.1);color:#34d399;border:1px solid rgba(52,211,153,.2);
+                   border-radius:6px;padding:3px 8px;font-size:.62rem;font-weight:600'>Python</span>
+      <span style='background:rgba(251,146,60,.1);color:#fb923c;border:1px solid rgba(251,146,60,.2);
+                   border-radius:6px;padding:3px 8px;font-size:.62rem;font-weight:600'>Streamlit</span>
+      <span style='background:rgba(248,113,113,.1);color:#f87171;border:1px solid rgba(248,113,113,.2);
+                   border-radius:6px;padding:3px 8px;font-size:.62rem;font-weight:600'>GH Actions</span>
+      <span style='background:rgba(96,165,250,.1);color:#60a5fa;border:1px solid rgba(96,165,250,.2);
+                   border-radius:6px;padding:3px 8px;font-size:.62rem;font-weight:600'>Plotly</span>
+    </div>
+    <div style='margin-top:16px;font-size:.62rem;color:#1e3a5f;text-align:center;line-height:1.8'>
+      UN SDG 13 · Climate Action<br>PCCoE IGC Indradhanu 2026
     </div>
     """, unsafe_allow_html=True)
 
@@ -950,85 +996,125 @@ elif page == "🔍 Reservoir Detail":
 #  PAGE 3 — METHODOLOGY
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "🛰️ Methodology":
-    st.markdown("## 🛰️ How ReservoirWatch Works")
+    st.markdown("""
+    <div style='margin-bottom:24px'>
+      <h1 style='font-size:1.75rem;margin-bottom:6px'>🛰️ How ReservoirWatch Works</h1>
+      <p style='color:#475569;margin:0'>
+        End-to-end satellite intelligence — from orbit to actionable drought warning.
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Pipeline step cards
+    steps = [
+        ("🛰️","Sentinel-2","ESA captures 10m multispectral imagery every ~5 days"),
+        ("☁️","Cloud Filter","Images >20% cloud cover auto-rejected"),
+        ("🌊","NDWI","(Green−NIR)/(Green+NIR) per pixel"),
+        ("📐","Water Mask","NDWI>0.2 → water; summed to sq km"),
+        ("📊","Risk Engine","28-day depletion rate → SAFE/WATCH/CRITICAL"),
+        ("🔮","60-Day Forecast","2-point slope projects future water level"),
+        ("⚡","Auto Publish","GitHub Actions pushes CSV every 5 days"),
+    ]
+    cols = st.columns(7)
+    for i, (icon, title, desc) in enumerate(steps):
+        with cols[i]:
+            st.markdown(f"""
+            <div style='background:#1e293b;border-radius:10px;padding:12px 8px;text-align:center;
+                        border-top:3px solid #38bdf8;height:100%'>
+              <div style='font-size:1.4rem;margin-bottom:6px'>{icon}</div>
+              <div style='font-size:.65rem;font-weight:700;color:#38bdf8;margin-bottom:5px;
+                          text-transform:uppercase;letter-spacing:.04em'>{title}</div>
+              <div style='font-size:.6rem;color:#475569;line-height:1.45'>{desc}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
     c1, c2 = st.columns(2)
 
     with c1:
-        st.markdown("""
-### Satellite Pipeline (Incremental)
-Free **Sentinel-2 Level-2A** imagery from ESA Copernicus, accessed via Google Earth Engine.
-
-**NDWI Formula:**
-""")
+        st.markdown('<div class="sec-hdr">NDWI Formula</div>', unsafe_allow_html=True)
         st.latex(r"\mathrm{NDWI} = \frac{B_3\,(\mathrm{Green}) - B_8\,(\mathrm{NIR})}{B_3\,(\mathrm{Green}) + B_8\,(\mathrm{NIR})}")
         st.markdown("""
-NDWI > 0.2 → water pixel · < 0.2 → land/vegetation.
+        <div style='background:#0f172a;border-radius:10px;padding:14px;margin-top:10px'>
+          <div style='font-size:.68rem;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em'>Bands Used (Sentinel-2)</div>
+          <div style='display:grid;grid-template-columns:1fr 1fr;gap:8px'>
+            <div style='font-size:.72rem;color:#38bdf8'><b>B3 Green</b> · 560 nm<br><span style='color:#334155'>Water absorption</span></div>
+            <div style='font-size:.72rem;color:#a78bfa'><b>B8 NIR</b> · 842 nm<br><span style='color:#334155'>Vegetation ref.</span></div>
+            <div style='font-size:.72rem;color:#22c55e'><b>NDWI &gt; 0.2</b><br><span style='color:#334155'>→ Water pixel</span></div>
+            <div style='font-size:.72rem;color:#f59e0b'><b>NDWI ≤ 0.2</b><br><span style='color:#334155'>→ Land/vegetation</span></div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-**Incremental Update System:**
-Every time the Colab notebook runs, it:
-1. Checks the last date already extracted per reservoir
-2. Fetches **only new satellite passes** since that date
-3. Appends them to the CSV — no duplicate API calls
+        st.markdown('<div class="sec-hdr" style="margin-top:20px">Risk Classification</div>', unsafe_allow_html=True)
+        st.dataframe(pd.DataFrame({
+            'Level':          ['🟢 SAFE',  '🟡 WATCH', '🔴 CRITICAL'],
+            'Fill Level':     ['> 55%',    '35–55%',   '< 35%'],
+            'Depletion/wk':   ['< 2%',     '2–4%',     '> 4%'],
+            'Action':         ['Monitor',  'Alert PMC','Emergency'],
+        }), use_container_width=True, hide_index=True)
 
-So running it today vs. next week gives you the latest data automatically,
-and each run costs almost nothing (only fetching the delta).
-
-**Pipeline steps:**
-1. Filter Sentinel-2 by bounding box + date
-2. Drop images with >20% cloud cover
-3. Compute NDWI per 10m pixel
-4. Threshold NDWI > 0.2 → water mask
-5. Sum pixel areas → sq km per date
-6. Repeat for all dates → time series
-""")
+        st.markdown('<div class="sec-hdr" style="margin-top:20px">Data Freshness Thresholds</div>', unsafe_allow_html=True)
+        st.dataframe(pd.DataFrame({
+            'Status':     ['🟢 Fresh', '🟡 Warning', '🔴 Stale'],
+            'Days Since': ['≤ 10d',    '11–20d',     '> 20d'],
+            'Meaning':    ['On track', 'Check clouds','Re-run GEE'],
+        }), use_container_width=True, hide_index=True)
 
     with c2:
-        st.markdown("""### Risk Logic & Freshness""")
+        st.markdown('<div class="sec-hdr">Reservoir Specifications</div>', unsafe_allow_html=True)
         st.dataframe(pd.DataFrame({
-            'Level':              ['🟢 SAFE','🟡 WATCH','🔴 CRITICAL'],
-            'Area (% of max)':    ['> 55%','35–55%','< 35%'],
-            'Depletion (%/wk)':   ['< 2%','2–4%','>4%'],
+            'Reservoir': ['Khadakwasla','Panshet','Varasgaon','Temghar'],
+            'Max Area':  ['7.5 sq km','12.0 sq km','18.5 sq km','4.5 sq km'],
+            'Geometry':  ['Rectangle','Polygon','Polygon','Rectangle'],
+            'Role':      ['Main supply','Feeder','Feeder','Feeder'],
+            'Status':    ['✅ Live','✅ Live','✅ Live','✅ Live'],
         }), use_container_width=True, hide_index=True)
 
+        st.markdown('<div class="sec-hdr" style="margin-top:20px">60-Day Forecast Logic</div>', unsafe_allow_html=True)
         st.markdown("""
-**Data Freshness Indicators (sidebar):**
-- 🟢 Fresh — last obs ≤10 days ago
-- 🟡 Warning — 11–20 days ago (re-run Colab)
-- 🔴 Stale — >20 days ago (re-run urgently)
+        <div style='background:#0f172a;border-radius:10px;padding:14px'>
+          <div style='font-size:.73rem;color:#cbd5e1;line-height:1.9'>
+            <span style='color:#38bdf8;font-weight:700'>1.</span> Take last 4 clean satellite passes<br>
+            <span style='color:#38bdf8;font-weight:700'>2.</span> Remove outliers ±15% from window median<br>
+            <span style='color:#38bdf8;font-weight:700'>3.</span> Slope = rate between last 2 clean passes<br>
+            <span style='color:#38bdf8;font-weight:700'>4.</span> Project forward 60 days from current level<br>
+            <span style='color:#f59e0b;font-weight:700'>★</span> Ceiling: no filling in dry season (Oct–Jun)<br>
+            <span style='color:#ef4444;font-weight:700'>!</span> WATCH/CRITICAL crossing dates predicted
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-**Days remaining** = days until reservoir drops below 20% of max capacity:
-```
-buffer_area ÷ (depletion_%/wk × max_area / 700)
-```
+        st.markdown('<div class="sec-hdr" style="margin-top:20px">Cascade Flow</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div style='background:#0f172a;border-radius:10px;padding:14px;
+                    font-size:.72rem;color:#94a3b8;line-height:2'>
+          <span style='color:#34d399'>Varasgaon</span> →
+          <span style='color:#a78bfa'>Panshet</span> →
+          <span style='color:#fb923c'>Temghar</span> →
+          <span style='color:#38bdf8'>Khadakwasla</span> →
+          <span style='color:#f1f5f9'>🏙 Pune City</span><br>
+          <span style='color:#334155'>All reservoirs drain into the Mutha River feeding Pune's 1,400 MLD daily demand</span>
+        </div>
+        """, unsafe_allow_html=True)
 
-**Reservoir Coordinates:**
-""")
-        st.dataframe(pd.DataFrame({
-            'Reservoir':  ['Khadakwasla','Panshet','Varasgaon'],
-            'GEE Box':    ['[73.71,18.40,73.79,18.46]','[73.55,18.35,73.65,18.43]',
-                           '[73.58,18.36,73.68,18.42]'],
-            'Max Area':   ['7.5 sq km','11.0 sq km','9.0 sq km'],
-            'Verified':   ['✅ Confirmed','⚠️ Verify','⚠️ Verify'],
-        }), use_container_width=True, hide_index=True)
-
-    st.divider()
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown('<div class="sec-hdr">Automated Pipeline Architecture</div>', unsafe_allow_html=True)
     st.markdown("""
-### Live Data Workflow
-```
-Colab (GEE)                 Local Machine
-───────────────             ──────────────────────────────
-Run satellite_pipeline.py → downloads reservoir_data.csv
-                          → drop into data/ folder
-                          → click "Refresh Risk Analysis"
-                          → dashboard shows real-time data
-```
-Re-run the notebook anytime — it only fetches new dates since last run.
-""")
+    <div style='background:#0f172a;border-radius:12px;padding:20px;
+                font-family:monospace;font-size:.78rem;color:#475569;line-height:2.2'>
+      <span style='color:#38bdf8'>ESA Sentinel-2</span> (5-day orbit)
+      →&nbsp;<span style='color:#34d399'>Google Earth Engine</span> (NDWI + cloud mask + area)
+      →&nbsp;<span style='color:#a78bfa'>GitHub Actions</span> (cron schedule)
+      →&nbsp;<span style='color:#fb923c'>risk_analysis.csv</span> (auto-committed)
+      →&nbsp;<span style='color:#f8fafc'>Streamlit Cloud</span> (auto-redeploys)
+      →&nbsp;<span style='color:#38bdf8'>Dashboard</span> (3.4M Pune residents)<br>
+      <span style='color:#22c55e'>✓ Zero manual steps &nbsp; ✓ Incremental delta-only updates &nbsp; ✓ Fully open-source</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 st.markdown("""
-<div class="footer">
-  ReservoirWatch · PCCoE IGC Indradhanu Hackathon 2026 ·
-  UN SDG 13 — Climate Action ·
-  Data: ESA Sentinel-2 via Google Earth Engine
+<div style='text-align:center;padding:36px 0 20px;font-size:.7rem;color:#1e3a5f'>
+  ReservoirWatch · PCCoE IGC Indradhanu 2026 · UN SDG 13 — Climate Action · ESA Sentinel-2 via GEE
 </div>
 """, unsafe_allow_html=True)
