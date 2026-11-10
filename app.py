@@ -208,17 +208,36 @@ def chart_reservoir_map(rsk_df):
     PUNE = (73.857, 18.520)
     fig  = go.Figure()
 
-    # Cascade flow lines (Scattermap = new API, replaces Scattermapbox)
+    # ── Cascade flow lines (thick + thin layered for depth effect) ────────────
     all_pts = {**COORDS, 'Pune': PUNE}
     for src, dst in [('Varasgaon','Panshet'),('Panshet','Temghar'),
                      ('Temghar','Khadakwasla'),('Khadakwasla','Pune')]:
         s, d = all_pts[src], all_pts[dst]
+        # Outer glow line
         fig.add_trace(go.Scattermap(
             lon=[s[0], d[0]], lat=[s[1], d[1]], mode='lines',
-            line=dict(width=2, color='rgba(56,189,248,0.4)'),
+            line=dict(width=6, color='rgba(56,189,248,0.12)'),
+            showlegend=False, hoverinfo='skip'))
+        # Core line
+        fig.add_trace(go.Scattermap(
+            lon=[s[0], d[0]], lat=[s[1], d[1]], mode='lines',
+            line=dict(width=2, color='rgba(56,189,248,0.55)'),
             showlegend=False, hoverinfo='skip'))
 
-    # Reservoir markers
+    # Dashed supply line Khadakwasla → Pune city (water mains)
+    kh, pu = COORDS['Khadakwasla'], PUNE
+    # Interpolate mid-point for dashed effect
+    for frac in [0, 0.25, 0.5, 0.75]:
+        x0 = kh[0] + frac * (pu[0] - kh[0])
+        y0 = kh[1] + frac * (pu[1] - kh[1])
+        x1 = kh[0] + (frac + 0.18) * (pu[0] - kh[0])
+        y1 = kh[1] + (frac + 0.18) * (pu[1] - kh[1])
+        fig.add_trace(go.Scattermap(
+            lon=[x0, x1], lat=[y0, y1], mode='lines',
+            line=dict(width=2, color='rgba(248,250,252,0.25)'),
+            showlegend=False, hoverinfo='skip'))
+
+    # ── Reservoir markers ─────────────────────────────────────────────────────
     for name, (lon, lat) in COORDS.items():
         row   = latest(rsk_df, name)
         if row is None: continue
@@ -226,36 +245,74 @@ def chart_reservoir_map(rsk_df):
         area  = row['surface_area_sqkm']
         pct   = area / max_a * 100
         risk  = row['risk_level']
+        dep   = row.get('depletion_rate_pct_per_week', 0)
         color = RISK_COLORS.get(risk, '#38bdf8')
-        size  = max(18, min(50, pct * 0.5))
+        rc    = RES_COLORS.get(name, '#38bdf8')
+        size  = max(22, min(54, pct * 0.52))
+
+        # Outer glow ring (large, very transparent)
+        fig.add_trace(go.Scattermap(
+            lon=[lon], lat=[lat], mode='markers',
+            marker=dict(size=size + 22, color=color, opacity=0.12),
+            showlegend=False, hoverinfo='skip'))
+
+        # Mid glow ring
+        fig.add_trace(go.Scattermap(
+            lon=[lon], lat=[lat], mode='markers',
+            marker=dict(size=size + 10, color=color, opacity=0.22),
+            showlegend=False, hoverinfo='skip'))
+
+        # Main marker
         fig.add_trace(go.Scattermap(
             lon=[lon], lat=[lat], mode='markers+text',
-            marker=dict(size=size, color=color, opacity=0.9),
-            text=[name], textposition='top right',
-            textfont=dict(color='#f1f5f9', size=12),
-            name=f'{name} ({risk})',
-            hovertemplate=f'<b>{name}</b><br>Risk: <b>{risk}</b><br>'
-                          f'Area: {area:.2f} sq km ({pct:.0f}%)<extra></extra>'))
+            marker=dict(size=size, color=color, opacity=0.92),
+            text=[f'{pct:.0f}%'],
+            textposition='middle center',
+            textfont=dict(color='#ffffff', size=10, family='Inter, sans-serif'),
+            name=f'{name}',
+            hovertemplate=(
+                f'<b style="font-size:14px">{name}</b><br>'
+                f'<b>Risk:</b> {risk}<br>'
+                f'<b>Fill level:</b> {pct:.1f}%<br>'
+                f'<b>Surface area:</b> {area:.2f} sq km<br>'
+                f'<b>Depletion:</b> {dep:+.2f}%/wk'
+                f'<extra></extra>'
+            )))
 
-    # Pune city marker
+    # ── Pune city star marker ─────────────────────────────────────────────────
     fig.add_trace(go.Scattermap(
         lon=[PUNE[0]], lat=[PUNE[1]], mode='markers+text',
-        marker=dict(size=14, color='#f1f5f9'),
-        text=['Pune City'], textposition='top right',
-        textfont=dict(color='#94a3b8', size=11),
+        marker=dict(size=18, color='#f8fafc', opacity=0.9),
+        text=['🏙 Pune'], textposition='top right',
+        textfont=dict(color='#f8fafc', size=12, family='Inter, sans-serif'),
         showlegend=False,
-        hovertemplate='<b>Pune City</b><br>Population served: 3.4M<extra></extra>'))
+        hovertemplate='<b>Pune City</b><br>Population served: 3.4M residents<extra></extra>'))
 
     fig.update_layout(
-        map=dict(style='carto-darkmatter',
-                 center=dict(lon=73.63, lat=18.39), zoom=9.5),
-        height=430, margin=dict(l=0, r=0, t=0, b=0),
+        map=dict(
+            style='carto-darkmatter',
+            center=dict(lon=73.63, lat=18.39),
+            zoom=9.6,
+        ),
+        height=460,
+        margin=dict(l=0, r=0, t=0, b=0),
         paper_bgcolor='rgba(0,0,0,0)',
-        legend=dict(bgcolor='rgba(15,23,42,0.85)', bordercolor='#334155',
-                    borderwidth=1, font=dict(color='#cbd5e1', size=11),
-                    x=0.01, y=0.99))
+        legend=dict(
+            bgcolor='rgba(10,18,34,0.88)',
+            bordercolor='#334155', borderwidth=1,
+            font=dict(color='#cbd5e1', size=11,
+                      family='Inter, sans-serif'),
+            title=dict(text='Reservoir Status',
+                       font=dict(color='#64748b', size=10)),
+            x=0.01, y=0.99,
+        ),
+        hoverlabel=dict(
+            bgcolor='#1e293b', bordercolor='#334155',
+            font=dict(color='#f1f5f9', size=12,
+                      family='Inter, sans-serif'),
+        ),
+    )
     return fig
-
 
 
 def chart_combined(rsk_df):
