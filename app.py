@@ -245,22 +245,55 @@ def chart_area_detail(rsk_df, name):
 def chart_depletion(rsk_df, name):
     df = rsk_df[rsk_df['reservoir_name'] == name].sort_values('date')
     if 'depletion_rate_pct_per_week' not in df.columns: return None
-    colors = df['depletion_rate_pct_per_week'].apply(
+
+    vals   = df['depletion_rate_pct_per_week']
+    colors = vals.apply(
         lambda x: '#ef4444' if x > 4 else '#f59e0b' if x > 2 else '#22c55e' if x < 0 else '#38bdf8'
     )
+
+    # Auto-scale y-axis with 30% padding around actual data range
+    data_min = min(vals.min(), 0)
+    data_max = max(vals.max(), 0)
+    padding  = max((data_max - data_min) * 0.35, 1.5)
+    y_min    = data_min - padding
+    y_max    = data_max + padding
+
     fig = go.Figure()
-    fig.add_hline(y=0, line_color='#334155', line_width=1)
-    fig.add_hline(y=2, line_dash='dot', line_color='#f59e0b', line_width=1,
-                  annotation_text='Watch', annotation_font=dict(color='#f59e0b', size=9))
-    fig.add_hline(y=4, line_dash='dot', line_color='#ef4444', line_width=1,
-                  annotation_text='Critical', annotation_font=dict(color='#ef4444', size=9))
+
+    # Filled area under the line for readability
+    fig.add_trace(go.Scatter(
+        x=df['date'], y=vals,
+        fill='tozeroy',
+        fillcolor='rgba(56,189,248,0.08)',
+        line=dict(color='rgba(56,189,248,0.3)', width=1),
+        showlegend=False,
+        hoverinfo='skip',
+    ))
+
+    # Colored bar chart (the main visual)
     fig.add_trace(go.Bar(
-        x=df['date'], y=df['depletion_rate_pct_per_week'],
-        marker_color=list(colors), name='Depletion Rate',
+        x=df['date'], y=vals,
+        marker_color=list(colors),
+        marker_line_width=0,
+        opacity=0.85,
+        name='Depletion Rate',
         hovertemplate="Depletion: %{y:+.2f}%/wk<br>%{x|%b %d, %Y}<extra></extra>",
     ))
-    _dark(fig, height=260, ytitle="Depletion (%/week)")
+
+    # Threshold lines
+    fig.add_hline(y=0, line_color='#475569', line_width=1)
+    fig.add_hline(y=2,  line_dash='dot', line_color='#f59e0b', line_width=1.5,
+                  annotation_text='⚠ Watch (2%)', annotation_position='top right',
+                  annotation_font=dict(color='#f59e0b', size=10))
+    fig.add_hline(y=4,  line_dash='dot', line_color='#ef4444', line_width=1.5,
+                  annotation_text='🔴 Critical (4%)', annotation_position='top right',
+                  annotation_font=dict(color='#ef4444', size=10))
+
+    _dark(fig, height=280, ytitle='Depletion (%/week)')
+    fig.update_yaxes(range=[y_min, y_max], zeroline=True, zerolinecolor='#475569')
+    fig.update_xaxes(rangeslider=dict(visible=False))
     return fig
+
 
 
 def chart_days_remaining(rsk_df):
