@@ -32,10 +32,11 @@ except ImportError:
 # Reservoir max surface areas (sq km) — from known capacities
 RESERVOIR_MAX_AREAS = {
     'Khadakwasla': 7.5,
-    'Panshet':     11.0,
-    'Varasgaon':   9.0,
-    'Temghar':     3.0,   # smaller reservoir upstream
+    'Panshet':     12.0,   # updated from satellite observation
+    'Varasgaon':   18.5,   # updated from satellite observation
+    'Temghar':     4.5,    # updated from satellite observation
 }
+
 
 # Risk thresholds
 CRITICAL_AREA_PCT   = 35.0   # % of max capacity

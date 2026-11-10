@@ -30,12 +30,15 @@ st.markdown("""
   [data-testid="stSidebar"]{ background:#1e293b; border-right:1px solid #334155; }
   [data-testid="stSidebar"] * { color:#cbd5e1 !important; }
 
-  .badge-safe     { background:#22c55e; color:#fff; padding:4px 13px; border-radius:20px;
-                    font-weight:700; font-size:.82rem; letter-spacing:.05em; display:inline-block; }
-  .badge-watch    { background:#f59e0b; color:#fff; padding:4px 13px; border-radius:20px;
-                    font-weight:700; font-size:.82rem; letter-spacing:.05em; display:inline-block; }
-  .badge-critical { background:#ef4444; color:#fff; padding:4px 13px; border-radius:20px;
-                    font-weight:700; font-size:.82rem; letter-spacing:.05em; display:inline-block;
+  .badge-safe     { background:#22c55e; color:#fff; padding:3px 10px; border-radius:20px;
+                    font-weight:700; font-size:.78rem; letter-spacing:.04em; display:inline-flex;
+                    align-items:center; gap:5px; white-space:nowrap; flex-shrink:0; }
+  .badge-watch    { background:#f59e0b; color:#fff; padding:3px 10px; border-radius:20px;
+                    font-weight:700; font-size:.78rem; letter-spacing:.04em; display:inline-flex;
+                    align-items:center; gap:5px; white-space:nowrap; flex-shrink:0; }
+  .badge-critical { background:#ef4444; color:#fff; padding:3px 10px; border-radius:20px;
+                    font-weight:700; font-size:.78rem; letter-spacing:.04em; display:inline-flex;
+                    align-items:center; gap:5px; white-space:nowrap; flex-shrink:0;
                     animation:pulse 1.5s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.65} }
 
@@ -71,8 +74,9 @@ st.markdown("""
 
 # ── CONSTANTS ─────────────────────────────────────────────────────────────────
 RISK_COLORS = {'SAFE':'#22c55e', 'WATCH':'#f59e0b', 'CRITICAL':'#ef4444'}
-RES_COLORS  = {'Khadakwasla':'#38bdf8', 'Panshet':'#a78bfa', 'Varasgaon':'#34d399'}
-MAX_AREAS   = {'Khadakwasla':7.5, 'Panshet':11.0, 'Varasgaon':9.0}
+RES_COLORS  = {'Khadakwasla':'#38bdf8', 'Panshet':'#a78bfa', 'Varasgaon':'#34d399', 'Temghar':'#fb923c'}
+# Max areas updated from actual satellite measurements (Nov 2026)
+MAX_AREAS   = {'Khadakwasla':7.5, 'Panshet':12.0, 'Varasgaon':18.5, 'Temghar':4.5}
 SENTINEL2_REVISIT_DAYS = 5   # Sentinel-2 theoretical revisit
 
 
@@ -391,7 +395,7 @@ with st.sidebar:
     ESA Sentinel-2 via Google Earth Engine<br>
     NDWI · 10 m resolution · 5-day revisit<br><br>
     <b style='color:#64748b'>RESERVOIRS</b><br>
-    Khadakwasla · Panshet · Varasgaon<br>
+    Khadakwasla · Panshet · Varasgaon · Temghar<br>
     Mutha River Basin, Pune<br><br>
     <b style='color:#64748b'>ALIGNED WITH</b><br>
     UN SDG 13 — Climate Action
@@ -477,12 +481,12 @@ if page == "🏠 Overview":
         with cols[i]:
             st.markdown(f"""
             <div class="res-card card-{level.lower()}" style='border-color:{bc}'>
-              <div style='display:flex;justify-content:space-between;align-items:start;margin-bottom:14px'>
-                <div>
-                  <div style='font-size:1.1rem;font-weight:700;color:#f1f5f9'>{name}</div>
-                  <div style='font-size:.72rem;color:#475569'>Mutha River Basin</div>
+              <div style='display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:14px'>
+                <div style='min-width:0;flex:1'>
+                  <div style='font-size:1rem;font-weight:700;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>{name}</div>
+                  <div style='font-size:.7rem;color:#475569'>Mutha River Basin</div>
                 </div>
-                {badge(level)}
+                <div style='flex-shrink:0'>{badge(level)}</div>
               </div>
               <div style='display:grid;grid-template-columns:1fr 1fr;gap:10px'>
                 <div>
