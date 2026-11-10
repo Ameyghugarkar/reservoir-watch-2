@@ -251,26 +251,25 @@ def chart_depletion(rsk_df, name):
         lambda x: '#ef4444' if x > 4 else '#f59e0b' if x > 2 else '#22c55e' if x < 0 else '#38bdf8'
     )
 
-    # Auto-scale y-axis with 30% padding around actual data range
-    data_min = min(vals.min(), 0)
-    data_max = max(vals.max(), 0)
-    padding  = max((data_max - data_min) * 0.35, 1.5)
-    y_min    = data_min - padding
-    y_max    = data_max + padding
+    # Clip y-axis to 95th percentile to prevent outlier spikes from squashing the view
+    p05 = float(vals.quantile(0.05))
+    p95 = float(vals.quantile(0.95))
+    padding = max((p95 - p05) * 0.4, 2.0)
+    y_min = min(p05 - padding, -1)
+    y_max = max(p95 + padding,  6)
 
     fig = go.Figure()
 
-    # Filled area under the line for readability
+    # Subtle fill under line
     fig.add_trace(go.Scatter(
-        x=df['date'], y=vals,
+        x=df['date'], y=vals.clip(y_min, y_max),
         fill='tozeroy',
-        fillcolor='rgba(56,189,248,0.08)',
-        line=dict(color='rgba(56,189,248,0.3)', width=1),
-        showlegend=False,
-        hoverinfo='skip',
+        fillcolor='rgba(56,189,248,0.07)',
+        line=dict(color='rgba(56,189,248,0.25)', width=1),
+        showlegend=False, hoverinfo='skip',
     ))
 
-    # Colored bar chart (the main visual)
+    # Bars
     fig.add_trace(go.Bar(
         x=df['date'], y=vals,
         marker_color=list(colors),
@@ -280,19 +279,23 @@ def chart_depletion(rsk_df, name):
         hovertemplate="Depletion: %{y:+.2f}%/wk<br>%{x|%b %d, %Y}<extra></extra>",
     ))
 
-    # Threshold lines
-    fig.add_hline(y=0, line_color='#475569', line_width=1)
-    fig.add_hline(y=2,  line_dash='dot', line_color='#f59e0b', line_width=1.5,
-                  annotation_text='⚠ Watch (2%)', annotation_position='top right',
-                  annotation_font=dict(color='#f59e0b', size=10))
-    fig.add_hline(y=4,  line_dash='dot', line_color='#ef4444', line_width=1.5,
-                  annotation_text='🔴 Critical (4%)', annotation_position='top right',
-                  annotation_font=dict(color='#ef4444', size=10))
+    # Threshold lines — no annotation text, just colored dashed lines
+    fig.add_hline(y=0,  line_color='#475569', line_width=1)
+    fig.add_hline(y=2,  line_dash='dot', line_color='#f59e0b', line_width=1.5)
+    fig.add_hline(y=4,  line_dash='dot', line_color='#ef4444', line_width=1.5)
 
-    _dark(fig, height=280, ytitle='Depletion (%/week)')
+    # Clean legend labels via invisible scatter points
+    fig.add_trace(go.Scatter(x=[None], y=[None], mode='lines',
+        line=dict(color='#f59e0b', dash='dot', width=2), name='Watch (2%/wk)'))
+    fig.add_trace(go.Scatter(x=[None], y=[None], mode='lines',
+        line=dict(color='#ef4444', dash='dot', width=2), name='Critical (4%/wk)'))
+
+    _dark(fig, height=280, ytitle='Depletion (%/week)',
+          legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
     fig.update_yaxes(range=[y_min, y_max], zeroline=True, zerolinecolor='#475569')
-    fig.update_xaxes(rangeslider=dict(visible=False))
     return fig
+
+
 
 
 
