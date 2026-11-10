@@ -150,6 +150,33 @@ def badge(level):
     return f'<span class="badge-{level.lower()}">&#9679; {level}</span>'
 
 
+def compute_crisis_dates(rsk_df):
+    """Project when each reservoir will hit WATCH/CRITICAL based on current depletion."""
+    results = {}
+    today   = pd.Timestamp.now().normalize()
+    for name in rsk_df['reservoir_name'].unique():
+        sub   = rsk_df[rsk_df['reservoir_name'] == name].sort_values('date')
+        row   = sub.iloc[-1]
+        max_a = MAX_AREAS.get(name, row['surface_area_sqkm'])
+        area  = row['surface_area_sqkm']
+        dep   = row.get('depletion_rate_pct_per_week', 0)
+        watch_date = critical_date = None
+        if dep > 0.1:
+            area_per_day  = (dep / 100 * max_a) / 7
+            watch_thr     = max_a * 0.35
+            crit_thr      = max_a * 0.20
+            if area > watch_thr:
+                watch_date    = today + pd.Timedelta(days=int((area - watch_thr) / area_per_day))
+            if area > crit_thr:
+                critical_date = today + pd.Timedelta(days=int((area - crit_thr) / area_per_day))
+        results[name] = {
+            'watch_date': watch_date, 'critical_date': critical_date,
+            'depletion': dep, 'area_pct': area / max_a * 100,
+            'risk': row['risk_level'],
+        }
+    return results
+
+
 # ── CHARTS ────────────────────────────────────────────────────────────────────
 def _dark(fig, height=300, ytitle='', hovermode='closest', legend=None):
     u = dict(template='plotly_dark', paper_bgcolor='rgba(0,0,0,0)',
@@ -508,16 +535,74 @@ if page == "🏠 Overview":
     </p>
     """, unsafe_allow_html=True)
 
-    # Critical alerts
-    for name in reservoirs:
-        row = latest(rsk_df, name)
-        if row is not None and row['risk_level'] == 'CRITICAL':
-            max_a = MAX_AREAS.get(name, row['surface_area_sqkm'])
-            pct   = row['surface_area_sqkm'] / max_a * 100
+    # ── Combined System Health Score ──────────────────────────────────────────
+    crisis_info  = compute_crisis_dates(rsk_df)
+    risk_scores  = {'SAFE': 100, 'WATCH': 55, 'CRITICAL': 15}
+    scores       = [risk_scores.get(v['risk'], 50) for v in crisis_info.values()]
+    sys_health   = int(sum(scores) / len(scores)) if scores else 0
+    n_safe       = sum(1 for v in crisis_info.values() if v['risk'] == 'SAFE')
+    n_watch      = sum(1 for v in crisis_info.values() if v['risk'] == 'WATCH')
+    n_crit       = sum(1 for v in crisis_info.values() if v['risk'] == 'CRITICAL')
+    health_color = '#22c55e' if sys_health >= 75 else '#f59e0b' if sys_health >= 45 else '#ef4444'
+    health_label = 'Healthy' if sys_health >= 75 else 'Stressed' if sys_health >= 45 else 'Critical'
+
+    st.markdown(f"""
+    <div style='background:#1e293b;border-radius:14px;padding:18px 24px;margin-bottom:16px;
+                display:flex;align-items:center;justify-content:space-between;
+                border:1px solid #334155;flex-wrap:wrap;gap:16px'>
+      <div>
+        <div style='font-size:.72rem;color:#64748b;text-transform:uppercase;
+                    letter-spacing:.08em;margin-bottom:4px'>
+          🏙️ Pune Water System — Overall Health
+        </div>
+        <div style='display:flex;align-items:baseline;gap:10px'>
+          <span style='font-size:2.8rem;font-weight:800;color:{health_color}'>{sys_health}%</span>
+          <span style='font-size:1rem;font-weight:600;color:{health_color}'>{health_label}</span>
+        </div>
+        <div style='font-size:.72rem;color:#475569;margin-top:2px'>
+          Based on {len(crisis_info)} reservoirs serving 3.4M residents · Mutha River Basin
+        </div>
+      </div>
+      <div style='display:flex;gap:24px'>
+        <div style='text-align:center'>
+          <div style='font-size:2rem;font-weight:700;color:#22c55e'>{n_safe}</div>
+          <div style='font-size:.72rem;color:#475569;margin-top:2px'>🟢 SAFE</div>
+        </div>
+        <div style='text-align:center'>
+          <div style='font-size:2rem;font-weight:700;color:#f59e0b'>{n_watch}</div>
+          <div style='font-size:.72rem;color:#475569;margin-top:2px'>🟡 WATCH</div>
+        </div>
+        <div style='text-align:center'>
+          <div style='font-size:2rem;font-weight:700;color:#ef4444'>{n_crit}</div>
+          <div style='font-size:.72rem;color:#475569;margin-top:2px'>🔴 CRITICAL</div>
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── Crisis Date Prediction Banners ────────────────────────────────────────
+    for name, info in crisis_info.items():
+        # Already-critical reservoirs
+        if info['risk'] == 'CRITICAL':
+            max_a = MAX_AREAS.get(name, 1)
+            row   = latest(rsk_df, name)
+            pct   = row['surface_area_sqkm'] / max_a * 100 if row is not None else 0
             st.markdown(f"""<div class="alert-crit">
-            🚨 <b>CRITICAL — {name}:</b> {row['surface_area_sqkm']:.2f} sq km
+            🚨 <b>CRITICAL NOW — {name}:</b> {row['surface_area_sqkm']:.2f} sq km
             ({pct:.0f}% capacity) · estimated <b>{row['days_remaining_estimate']} days</b> buffer remaining
             </div>""", unsafe_allow_html=True)
+        # Upcoming watch warnings (within 90 days)
+        elif info['watch_date']:
+            days_away = (info['watch_date'] - pd.Timestamp.now().normalize()).days
+            if 0 < days_away <= 90 and info['depletion'] > 0.5:
+                crit_txt = ''
+                if info['critical_date']:
+                    cd = (info['critical_date'] - pd.Timestamp.now().normalize()).days
+                    crit_txt = f" · 🔴 CRITICAL projected in <b>{cd} days</b> ({info['critical_date'].strftime('%b %d')})"
+                st.markdown(f"""<div class="alert-stale">
+                ⚠️ <b>Forecast: {name}</b> projected to reach <b>WATCH level in {days_away} days</b>
+                ({info['watch_date'].strftime('%b %d, %Y')}) at {info['depletion']:+.2f}%/wk{crit_txt}
+                </div>""", unsafe_allow_html=True)
 
     # ── Reservoir Cards ───────────────────────────────────────────────────────
     st.markdown('<div class="sec-hdr">Current Status</div>', unsafe_allow_html=True)
