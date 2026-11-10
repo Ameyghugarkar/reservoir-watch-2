@@ -6,6 +6,10 @@ on:
     - cron: '0 2 */5 * *'
   workflow_dispatch:  # Also allows manual trigger from GitHub website
 
+# Grant write permission so the workflow can push updated CSV back to repo
+permissions:
+  contents: write
+
 jobs:
   update-satellite-data:
     runs-on: ubuntu-latest
