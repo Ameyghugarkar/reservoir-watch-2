@@ -255,6 +255,7 @@ date,surface_area_sqkm,cloud_cover_pct,reservoir_name
 2026-10-25,6.8453,0.5,Khadakwasla
 2026-11-04,6.9062,2.1,Khadakwasla
 2026-11-09,6.8602,0.0,Khadakwasla
+2026-11-11,7.0254,0.0,Khadakwasla
 2020-01-05,8.6307,15.1,Panshet
 2020-01-15,10.5424,0.8,Panshet
 2020-01-20,13.1216,0.1,Panshet
@@ -511,6 +512,7 @@ date,surface_area_sqkm,cloud_cover_pct,reservoir_name
 2026-10-25,12.706,0.5,Panshet
 2026-11-04,12.2474,2.1,Panshet
 2026-11-09,11.6446,0.0,Panshet
+2026-11-11,11.756,0.0,Panshet
 2020-01-05,0.9684,15.1,Temghar
 2020-01-15,0.5415,0.8,Temghar
 2020-01-20,1.1065,0.1,Temghar
@@ -767,6 +769,7 @@ date,surface_area_sqkm,cloud_cover_pct,reservoir_name
 2026-10-25,4.4172,0.5,Temghar
 2026-11-04,4.2336,2.1,Temghar
 2026-11-09,4.1325,0.0,Temghar
+2026-11-11,4.0899,0.0,Temghar
 2020-01-05,14.2658,15.1,Varasgaon
 2020-01-15,16.1538,0.8,Varasgaon
 2020-01-20,18.4659,0.1,Varasgaon
@@ -1023,3 +1026,4 @@ date,surface_area_sqkm,cloud_cover_pct,reservoir_name
 2026-10-25,18.7263,0.5,Varasgaon
 2026-11-04,18.3099,2.1,Varasgaon
 2026-11-09,17.9675,0.0,Varasgaon
+2026-11-11,18.0333,0.0,Varasgaon
